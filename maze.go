@@ -396,6 +396,52 @@ func (maze *Maze) PrintSVG(writer io.Writer, format *Format, scale int) {
 	fmt.Fprintln(writer, "</svg>")
 }
 
+func (maze *Maze) PrintOpenSCAD(writer io.Writer, format *Format, scale int) {
+	var sb strings.Builder
+	maze.Print(&sb, format)
+	lines := strings.Split(strings.TrimSpace(sb.String()), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	width := len(lines[0]) / 2
+	height := len(lines)
+	fmt.Fprintln(writer, "module maze(scale) {\nunion() {")
+	for y := 0; y < height; y++ {
+		if y >= len(lines) {
+			continue
+		}
+		for x := 0; x < width; x++ {
+			if x*2 >= len(lines[y]) {
+				continue
+			}
+			switch lines[y][x*2 : x*2+2] {
+			case "##":
+				fmt.Fprintf(writer, `translate([%d*scale, %d*scale, 0]) cube(size=scale, center=true);`+"\n", x, y)
+			}
+		}
+	}
+	fmt.Fprintln(writer, "}}")
+
+	fmt.Fprintln(writer, "module solution(scale) {\nunion() {")
+	for y := 0; y < height; y++ {
+		if y >= len(lines) {
+			continue
+		}
+		for x := 0; x < width; x++ {
+			if x*2 >= len(lines[y]) {
+				continue
+			}
+			switch lines[y][x*2 : x*2+2] {
+			case "::":
+				fmt.Fprintf(writer, `translate([%d*scale, %d*scale, 0]) cube(size=scale, center=true);`+"\n", x, y)
+			}
+		}
+	}
+	fmt.Fprintln(writer, "}}")
+	fmt.Fprintf(writer, "maze(%d);", scale)
+	fmt.Fprintf(writer, "#solution(%d);", scale)
+}
+
 // Print out the maze to the IO writer
 func (maze *Maze) Print(writer io.Writer, format *Format) {
 	fmt.Fprint(writer, maze.String(format))
